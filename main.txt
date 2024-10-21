@@ -585,6 +585,7 @@ local function Launch()
             if not noclip then
                 noclip = true
                 local ff = Instance.new("ForceField", game.Players.LocalPlayer.Character)
+		ff.Visible = false
                 local folder = Instance.new("Folder")
                 folder.Name = "noclip"
                 folder.Parent = game.Players.LocalPlayer.Character
