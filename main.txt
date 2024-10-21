@@ -238,8 +238,12 @@ local function Launch()
 			if Part:IsDescendantOf(workspace) then
 				local pos,onScreen = cam:WorldToViewportPoint(Part.Position)
 
+				if onScreen then
 					drawText.Visible = true
 					drawText.Position = Vector2.new(pos.X,pos.Y)
+				else
+					drawText.Visible = false
+				end
 
 				if ishum == true then
 					if _G.HealthESP == true then
