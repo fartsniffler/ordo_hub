@@ -32,7 +32,7 @@ local entityESP = false
 local function createESP(humanoid, character)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Adornee = character:WaitForChild("Head")
-	billboard.Size = UDim2.new(0, 100, 0, 50)
+	billboard.Size = UDim2.new(0, 200, 0, 100) -- Doubled size (was 100x50)
 	billboard.StudsOffset = Vector3.new(0, 5, 0)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = math.huge
@@ -44,6 +44,7 @@ local function createESP(humanoid, character)
 	textLabel.TextStrokeTransparency = 0.5
 	textLabel.TextScaled = true
 	textLabel.TextWrapped = false
+	textLabel.Font = Enum.Font.SourceSansBold -- Optional: bolder font for better readability
 
 	billboard.Parent = character
 
