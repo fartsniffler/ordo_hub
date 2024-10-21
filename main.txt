@@ -18,41 +18,97 @@ local WeatherLabel = nil
 local PingLabel = nil
 local GenderLabel = nil
 
+local camera = workspace.CurrentCamera
+
 local NoSpellZone1 = nil
 local NoSpellZone2 = nil
 
+local cruxiHighlights = {}
+local idolHighlights = {}
+local aurantHighlights = {}
+
+local entityESP = false
+
+local function createESP(humanoid, character)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Adornee = character:WaitForChild("Head")
+	billboard.Size = UDim2.new(0, 100, 0, 50)
+	billboard.StudsOffset = Vector3.new(0, 5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = math.huge
+
+	local textLabel = Instance.new("TextLabel", billboard)
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.TextColor3 = Color3.new(1, 1, 1)
+	textLabel.TextStrokeTransparency = 0.5
+	textLabel.TextScaled = true
+	textLabel.TextWrapped = false
+
+	billboard.Parent = character
+
+	-- Update ESP info
+	local function updateESP()
+		if humanoid and humanoid.Parent and entityESP == true and character:FindFirstChild("HumanoidRootPart") then
+			local distance = (camera.CFrame.Position - character.HumanoidRootPart.Position).Magnitude
+			textLabel.Text = string.format("%s | %d/%d | %.1f", character.Name, humanoid.Health, humanoid.MaxHealth, distance)
+		else
+			billboard:Destroy()
+		end
+	end
+
+	-- Connect to Humanoid's health change
+	humanoid.HealthChanged:Connect(updateESP)
+	game:GetService("RunService").RenderStepped:Connect(updateESP)
+end
+
+task.spawn(function()
+	while true do
+		if entityESP then
+			for _, character in pairs(workspace["Live"]:GetChildren()) do
+				if character:FindFirstChild("Humanoid") and character ~= game.Players.LocalPlayer.Character then
+					if not character:FindFirstChild("BillboardGui") then
+						createESP(character.Humanoid, character)
+					end
+				end
+			end
+		end
+		wait(1) -- Update every second
+	end
+end)
+
 if workspace:FindFirstChild("NoSpellZone") then
 	NoSpellZone1 = workspace:WaitForChild("NoSpellZone")
-    NoSpellZone1.Parent = game.ReplicatedStorage
+	NoSpellZone1.Parent = game.ReplicatedStorage
 	NoSpellZone2 = workspace:WaitForChild("NoSpellZone")
-    NoSpellZone2.Parent = game.ReplicatedStorage
+	NoSpellZone2.Parent = game.ReplicatedStorage
 
-    NoSpellZone1.Parent = game.Workspace
-    NoSpellZone2.Parent = game.Workspace
+	NoSpellZone1.Parent = game.Workspace
+	NoSpellZone2.Parent = game.Workspace
 end
 
 Game:GetService("RunService").RenderStepped:Connect(function()
 
-    --for i, v in pairs(DungeonMobs) do
-        --print(v.Name)
-    --end
-    local Plr = game.Players.LocalPlayer
+	--for i, v in pairs(DungeonMobs) do
+	--print(v.Name)
+	--end
+	local Plr = game.Players.LocalPlayer
 	Gauntlet = Plr.Character.Torso:FindFirstChild("LavaGauntlet11")
 
-    if targeting and target and Gauntlet then
-        Gauntlet:SetPrimaryPartCFrame(target.PrimaryPart.CFrame)
-    end
+	if targeting and target and Gauntlet then
+		Gauntlet:SetPrimaryPartCFrame(target.PrimaryPart.CFrame)
+	end
 
-    if RankLabel and WeatherLabel and PingLabel and GenderLabel then
-        if game.Players.LocalPlayer.leaderstats:FindFirstChild("Rank") then
-            RankLabel:Set("Rank - #".. game.Players.LocalPlayer.leaderstats.Rank.Value or "(null)")
-        else
-            RankLabel:Set("Rank - No Rank")
-        end
-        PingLabel:Set("Ping - ".. game.Players.LocalPlayer.CurrentPing.Value)
-        GenderLabel:Set("Gender - ".. game.Players.LocalPlayer.leaderstats.Gender.Value)
-        WeatherLabel:Set("Weather - ".. game.Workspace.Weather.Value)
-    end
+	if RankLabel and WeatherLabel and PingLabel and GenderLabel then
+		if game.Players.LocalPlayer.leaderstats:FindFirstChild("Rank") then
+			RankLabel:Set("Rank - #".. game.Players.LocalPlayer.leaderstats.Rank.Value or "(null)")
+		else
+			RankLabel:Set("Rank - No Rank")
+		end
+		PingLabel:Set("Ping - ".. game.Players.LocalPlayer.CurrentPing.Value)
+		GenderLabel:Set("Gender - ".. game.Players.LocalPlayer.leaderstats.Gender.Value)
+		WeatherLabel:Set("Weather - ".. game.Workspace.Weather.Value)
+	end
 end)
 
 local function Launch()
@@ -173,7 +229,6 @@ local function Launch()
 	_G.MeaESP = false
 	_G.AurantESP = false
 	_G.CrucifixESP = false
-	_G.HealthESP = false
 	_G.LoggingSounds = false
 	_G.RewardESP = false
 	_G.SpectatingDung = false
@@ -218,107 +273,32 @@ local function Launch()
 	end
 
 	local Works = false
-
-	local function draw(Part,Text,color,ishum)
-
-		local drawText = Drawing.new("Text")
-		drawText.Color = color
-		drawText.Visible = false
-		drawText.Text = Text
-		drawText.Font = 2
-		drawText.Size = 18
-		drawText.Outline = true
-		drawText.Center = true
-		if ishum and Part.Parent:IsA("Model") and Part.Parent:FindFirstChildWhichIsA("Humanoid") then
-			local HumLel = Part.Parent:FindFirstChildWhichIsA("Humanoid")
-			drawText.Text = Part.Parent.Name.." ["..HumLel.Health.."/"..HumLel.MaxHealth.."]"
-		end
-		local connection
-		connection = game:GetService("RunService").RenderStepped:Connect(function()
-			if Part:IsDescendantOf(workspace) then
-				local pos,onScreen = cam:WorldToViewportPoint(Part.Position)
-
-				if onScreen then
-					drawText.Visible = true
-					drawText.Position = Vector2.new(pos.X,pos.Y)
-				else
-					drawText.Visible = false
-				end
-
-				if ishum == true then
-					if _G.HealthESP == true then
-						task.spawn(function()
-							if Part:IsDescendantOf(workspace) then
-								if Part.Parent and Part.Parent:FindFirstChildWhichIsA("Humanoid") and Part.Parent:IsA("Model") and not Part:IsDescendantOf(workspace.NPCs) then
-									if Works == false then
-										Works = true
-										warn("updated worked first time...")
-									end
-
-									local HumLel = Part.Parent:FindFirstChildWhichIsA("Humanoid")
-                                    if HumLel.Health <= 0 then
-                                        drawText:Remove()
-                                        connection:Disconnect()
-                                    end
-									if Part.Parent:FindFirstChild("Dungeon") then
-										drawText.Text = "["..HumLel.Health.."/"..HumLel.MaxHealth.."]"
-										drawText.Color = Color3.new(1, 1, 0.490196)
-									else
-										drawText.Text = Part.Parent.Name.." ["..HumLel.Health.."/"..HumLel.MaxHealth.."]"
-									end
-								end
-							end
-						end)
-					else
-						drawText:Remove()
-						connection:Disconnect()
-					end
-				else
-					if Part.Name == "Award" then
-						drawText.Text = "Reward"
-						drawText.Color = Part.Color
-						drawText.Size = 20
-                        delay(10, function()
-                            drawText:Remove()
-							connection:Disconnect()
-                        end)
-					else
-						if Part.MeshId == "rbxassetid://10681298319" then
-							if _G.IdolEsp == false then
-								drawText:Remove()
-								connection:Disconnect()
-							end
-						elseif Part.MeshId == "rbxassetid://5603610480" then
-							if _G.AurantESP == false then
-								drawText:Remove()
-								connection:Disconnect()
-							end
-						elseif Part.MeshId == "rbxassetid://11468548833" then
-							if _G.CrucifixESP == false then
-								drawText:Remove()
-								connection:Disconnect()
-							end
-						end
-					end
-				end
-			else
-				drawText:Remove()
-				connection:Disconnect()
-			end
-		end)
-
-	end
-
+	
 	workspace.Thrown.ChildAdded:Connect(function(child)
 		if child:IsA("MeshPart") and child.MeshId == "rbxassetid://10681298319" then
 			if _G.IdolEsp == false then return end
-			draw(child,"IDOL",Color3.new(1, 0.854902, 0.270588),false)
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = Color3.new(255, 104, 34)
+			highlight.OutlineColor = Color3.new(255, 104, 34)
+			table.insert(idolHighlights, highlight)
 		elseif child:IsA("MeshPart") and child.MeshId == "rbxassetid://5603610480" then
 			if _G.AurantESP == false then return end
-			draw(child,"AURANT",Color3.fromRGB(193, 103, 55),false)
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = Color3.new(255, 104, 34)
+			highlight.OutlineColor = Color3.new(255, 104, 34)
+			table.insert(aurantHighlights, highlight)
 		elseif child:IsA("MeshPart") and child.MeshId == "rbxassetid://11468548833" then
 			if _G.CrucifixESP == false then return end
-			draw(child,"CRUCIFIX",Color3.new(1, 0.32549, 0.32549),false)
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = Color3.new(255, 104, 34)
+			highlight.OutlineColor = Color3.new(255, 104, 34)
+			table.insert(cruxiHighlights, highlight)
 		elseif child.Name == "TRAPlol!" then
 			if _G.MeaESP == false then return end
 			local c = child:GetPropertyChangedSignal("Transparency"):Connect(function()
@@ -333,21 +313,12 @@ local function Launch()
 	workspace.ChildAdded:Connect(function(child)
 		task.wait(0.1)
 		if child.Name == "Award" then
-			draw(child,"Reward",child.Color,false)
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = child.Color
+			highlight.OutlineColor = child.Color
 		end
-	end)
-
-	workspace.DescendantAdded:Connect(function(child)
-		delay(1,function()
-			if child:FindFirstChildWhichIsA("Humanoid") and child.Parent then
-				if _G.HealthESP == false then return end
-				if child:FindFirstChild("Dungeon") then
-					draw(child.PrimaryPart,"["..child:FindFirstChildWhichIsA("Humanoid").Health.."/"..child:FindFirstChildWhichIsA("Humanoid").MaxHealth.."]",Color3.new(1, 1, 0.490196),true)
-				else
-					draw(child.PrimaryPart,child.Name.." ["..child:FindFirstChildWhichIsA("Humanoid").Health.."/"..child:FindFirstChildWhichIsA("Humanoid").MaxHealth.."]",Color3.new(0.74902, 0.698039, 0.121569),true)
-				end
-			end
-		end)
 	end)
 
 	local function SetupCharacterConnections()
@@ -452,11 +423,11 @@ local function Launch()
 		Icon = "",
 		PremiumOnly = false
 	})
-    
-    RankLabel = HomeTab:AddLabel("Rank - #")
-    WeatherLabel = HomeTab:AddLabel("Weather - ")
-    PingLabel = HomeTab:AddLabel("Ping - ")
-    GenderLabel = HomeTab:AddLabel("Gender - ")
+
+	RankLabel = HomeTab:AddLabel("Rank - #")
+	WeatherLabel = HomeTab:AddLabel("Weather - ")
+	PingLabel = HomeTab:AddLabel("Ping - ")
+	GenderLabel = HomeTab:AddLabel("Gender - ")
 
 	local PlayerTab = Window:MakeTab({
 		Name = "Misc",
@@ -501,23 +472,23 @@ local function Launch()
 		end
 	})
 
-    PlayerTab:AddToggle({
+	PlayerTab:AddToggle({
 		Name = "Anti-Spell Prevention",
 		Default = false,
 		Callback = function(Value)
-            if NoSpellZone2 then
-                if Value == true then
-                    NoSpellZone1.Parent = game.ReplicatedStorage
-                    NoSpellZone2.Parent = game.ReplicatedStorage
-                else
-                    NoSpellZone1.Parent = game.Workspace
-                    NoSpellZone2.Parent = game.Workspace
-                end
-            end
-        end
+			if NoSpellZone2 then
+				if Value == true then
+					NoSpellZone1.Parent = game.ReplicatedStorage
+					NoSpellZone2.Parent = game.ReplicatedStorage
+				else
+					NoSpellZone1.Parent = game.Workspace
+					NoSpellZone2.Parent = game.Workspace
+				end
+			end
+		end
 	})
 
-    PlayerTab:AddToggle({
+	PlayerTab:AddToggle({
 		Name = "Infinite Climb",
 		Default = false,
 		Callback = function(Value)
@@ -556,7 +527,7 @@ local function Launch()
 			end
 		end
 	})
-	
+
 	PlayerTab:AddToggle({
 		Name = "Anti-Block Cooldown",
 		Default = false,
@@ -577,27 +548,27 @@ local function Launch()
 		Name = "Fly"
 	})
 
-    PlayerTab:AddBind({
+	PlayerTab:AddBind({
 		Name = "No-Clip",
-        Default = Enum.KeyCode.X,
-        Hold = false,
-        Callback = function()
-            if not noclip then
-                noclip = true
-                local ff = Instance.new("ForceField", game.Players.LocalPlayer.Character)
-		ff.Visible = false
-                local folder = Instance.new("Folder")
-                folder.Name = "noclip"
-                folder.Parent = game.Players.LocalPlayer.Character
-            else
-                noclip = false
-                for i, v in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
-                    if v:IsA("ForceField") or v.Name == "noclip" then
-                        v:Destroy()
-                    end
-                end
-            end
-        end 
+		Default = Enum.KeyCode.X,
+		Hold = false,
+		Callback = function()
+			if not noclip then
+				noclip = true
+				local ff = Instance.new("ForceField", game.Players.LocalPlayer.Character)
+				ff.Visible = false
+				local folder = Instance.new("Folder")
+				folder.Name = "noclip"
+				folder.Parent = game.Players.LocalPlayer.Character
+			else
+				noclip = false
+				for i, v in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
+					if v:IsA("ForceField") or v.Name == "noclip" then
+						v:Destroy()
+					end
+				end
+			end
+		end 
 	})
 
 	PlayerTab:AddBind({
@@ -624,8 +595,8 @@ local function Launch()
 		ValueName = "FlySpeed",
 		Callback = function(Value)
 			flySpeed = Value
-            _G.Fly = false
-            keys.W = false
+			_G.Fly = false
+			keys.W = false
 			keys.A = false
 			keys.S = false
 			keys.D = false
@@ -672,13 +643,13 @@ local function Launch()
 		end
 	})
 
-    
-    PlayerTab:AddButton({
-        Name = "Kill Self",
-        Callback = function(Value)
-            game.Players.LocalPlayer.Character.Head:Destroy()
-        end
-    })
+
+	PlayerTab:AddButton({
+		Name = "Kill Self",
+		Callback = function(Value)
+			game.Players.LocalPlayer.Character.Head:Destroy()
+		end
+	})
 
 	PlayerTab:AddToggle({
 		Name = "No-Stun",
@@ -720,49 +691,21 @@ local function Launch()
 		end    
 	})
 
+
+
+	EspTab:AddToggle({
+		Name = "Entity",
+		Default = false,
+		Callback = function(Value)
+			entityESP = Value
+		end
+	})
+	
 	EspTab:AddToggle({
 		Name = "Dungeon Reward",
 		Default = false,
 		Callback = function(Value)
 			_G.RewardESP = Value
-			if Value == true then
-				for i,child in pairs(workspace:GetChildren()) do
-					local done = false
-					for _,v in pairs(child:GetChildren()) do
-						if done == false then
-							if v:IsA("Attachment") and v:FindFirstChildWhichIsA("Trail") and v:FindFirstChildWhichIsA("ParticleEmitter") then
-								done = true
-							end
-						end
-					end
-					if done == true then
-						draw(child,"Reward",child.Color,false)
-					end
-				end
-			end
-		end
-	})
-
-
-
-	EspTab:AddToggle({
-		Name = "Health",
-		Default = false,
-		Callback = function(Value)
-			_G.HealthESP = Value
-			if Value == true then
-				for i,child in pairs(workspace:GetDescendants()) do
-					if child:FindFirstChildWhichIsA("Humanoid") then
-						if child:IsA("Model") and child.PrimaryPart and not child:IsDescendantOf(workspace.NPCs) then
-							if child:FindFirstChild("Dungeon") then
-								draw(child.PrimaryPart,"["..child:FindFirstChildWhichIsA("Humanoid").Health.."/"..child:FindFirstChildWhichIsA("Humanoid").MaxHealth.."]",Color3.new(1, 1, 0.490196),true)
-							else
-								draw(child.PrimaryPart,child.Name.." ["..child:FindFirstChildWhichIsA("Humanoid").Health.."/"..child:FindFirstChildWhichIsA("Humanoid").MaxHealth.."]",Color3.new(0.74902, 0.65098, 0.164706),true)
-							end
-						end
-					end
-				end
-			end
 		end
 	})
 
@@ -776,8 +719,17 @@ local function Launch()
 			if Value == true then
 				for i,child in pairs(workspace.Thrown:GetChildren()) do
 					if child:IsA("MeshPart") and child.MeshId == "rbxassetid://10681298319" then
-						draw(child,"IDOL",Color3.new(1,1,1),false)
+						local highlight = Instance.new("Highlight")
+						highlight.Parent = child
+						highlight.FillTransparency = 0
+						highlight.FillColor = Color3.new(255, 104, 34)
+						highlight.OutlineColor = Color3.new(255, 104, 34)
+						table.insert(idolHighlights, highlight)
 					end
+				end
+			else
+				for i, v in pairs(idolHighlights) do
+					v:Destroy()
 				end
 			end
 		end
@@ -792,8 +744,17 @@ local function Launch()
 			if Value == true then
 				for i,child in pairs(workspace.Thrown:GetChildren()) do
 					if child:IsA("MeshPart") and child.MeshId == "rbxassetid://5603610480" then
-						draw(child,"AURANT",Color3.fromRGB(193, 103, 55),false)
+						local highlight = Instance.new("Highlight")
+						highlight.Parent = child
+						highlight.FillTransparency = 0
+						highlight.FillColor = Color3.new(255, 104, 34)
+						highlight.OutlineColor = Color3.new(255, 104, 34)
+						table.insert(aurantHighlights, highlight)
 					end
+				end
+			else
+				for i, v in pairs(aurantHighlights) do
+					v:Destroy()
 				end
 			end
 		end
@@ -809,8 +770,17 @@ local function Launch()
 			if Value == true then
 				for i,child in pairs(workspace.Thrown:GetChildren()) do
 					if child:IsA("MeshPart") and child.MeshId == "rbxassetid://11468548833" then
-						draw(child,"CRUCIFIX",Color3.new(1,1,1),false)
+						local highlight = Instance.new("Highlight")
+						highlight.Parent = child
+						highlight.FillTransparency = 0
+						highlight.FillColor = Color3.new(255, 104, 34)
+						highlight.OutlineColor = Color3.new(255, 104, 34)
+						table.insert(cruxiHighlights, highlight)
 					end
+				end
+			else
+				for i, v in pairs(cruxiHighlights) do
+					v:Destroy()
 				end
 			end
 		end
@@ -826,38 +796,38 @@ local function Launch()
 
 	local alrgot = {}
 	local labels = {}
-	
+
 
 	TestingTab:AddButton({
 		Name = "Log Sounds",
 		Callback = function()
 			game.DescendantAdded:connect(function(added)
-		    if added:IsA("Sound") and not table.find(alrgot,added.SoundId) and _G.LoggingSounds == false then
-                if _G.LoggingSounds == false then
-                    _G.LoggingSounds = true
-                    table.insert(alrgot,added.SoundId)
-                    local butn
-                    local cutoff = TestingTab:AddSection({
-                        Name = "-------"
-                    })
-                    TestingTab:AddLabel(added:GetFullName())
-                    TestingTab:AddLabel("Pitch - "..tostring(added.PlaybackSpeed))
-                    butn = TestingTab:AddButton({
-                        Name = "Play - "..tostring(added.SoundId),
-                        Callback = function()
-                            local sfx = Instance.new("Sound",game.SoundService)
-                            sfx.SoundId = added.SoundId
-                            sfx:Play()
-                            delay(2,function()
-                                game.Debris:AddItem(sfx,sfx.TimeLength+5)
-                            end)
-                        end    
-                    })
-                    table.insert(labels,butn)
-                end
-		    end
-	    end)
-	end})
+				if added:IsA("Sound") and not table.find(alrgot,added.SoundId) and _G.LoggingSounds == false then
+					if _G.LoggingSounds == false then
+						_G.LoggingSounds = true
+						table.insert(alrgot,added.SoundId)
+						local butn
+						local cutoff = TestingTab:AddSection({
+							Name = "-------"
+						})
+						TestingTab:AddLabel(added:GetFullName())
+						TestingTab:AddLabel("Pitch - "..tostring(added.PlaybackSpeed))
+						butn = TestingTab:AddButton({
+							Name = "Play - "..tostring(added.SoundId),
+							Callback = function()
+								local sfx = Instance.new("Sound",game.SoundService)
+								sfx.SoundId = added.SoundId
+								sfx:Play()
+								delay(2,function()
+									game.Debris:AddItem(sfx,sfx.TimeLength+5)
+								end)
+							end    
+						})
+						table.insert(labels,butn)
+					end
+				end
+			end)
+		end})
 
 
 	local SFXLOGSECTION = TestingTab:AddSection({
@@ -899,14 +869,14 @@ local function Launch()
 		end
 	})
 
-    FunTab:AddToggle({
-        Name = "Molten Tracker",
-        Default = false,
-        Callback = function(Value)
-            local Gauntlet = game.Players.LocalPlayer.Character.Torso:FindFirstChild("LavaGauntlet11")
+	FunTab:AddToggle({
+		Name = "Molten Tracker",
+		Default = false,
+		Callback = function(Value)
+			local Gauntlet = game.Players.LocalPlayer.Character.Torso:FindFirstChild("LavaGauntlet11")
 			if Gauntlet then
-                targeting = Value
-                local Leaderboard = game.Players.LocalPlayer.PlayerGui.Leaderboard.ScrollingFrame
+				targeting = Value
+				local Leaderboard = game.Players.LocalPlayer.PlayerGui.Leaderboard.ScrollingFrame
 				task.spawn(function()
 					while task.wait(3) do
 						for i, v in pairs(Leaderboard:GetChildren()) do
@@ -923,20 +893,20 @@ local function Launch()
 						end
 					end
 				end)
-            else
-                targeting = false
+			else
+				targeting = false
 
-                OrionLib:MakeNotification({
+				OrionLib:MakeNotification({
 					Name = "Error",
 					Content = "You are not infernum",
 					Image = "rbxassetid://4483345998",
 					Time = 5
 				})
-            end
-        end
-    })
-	
-	
+			end
+		end
+	})
+
+
 	FunTab:AddButton({
 		Name = "Self Barrier",
 		Callback = function()
@@ -950,7 +920,7 @@ local function Launch()
 			SelectedPart.Position = Oldpos
 		end    
 	})
-	
+
 	OrionLib:Init()
 
 end
