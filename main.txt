@@ -28,11 +28,12 @@ local idolHighlights = {}
 local aurantHighlights = {}
 
 local entityESP = false
+local espSize = 22.5
 
 local function createESP(humanoid, character)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Adornee = character:WaitForChild("Head")
-	billboard.Size = UDim2.new(0, 200, 0, 100) -- Doubled size (was 100x50)
+	billboard.Size = UDim2.new(0, 100, 0, 50) -- Keep this size, the actual display will be scaled by TextSize
 	billboard.StudsOffset = Vector3.new(0, 5, 0)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = math.huge
@@ -42,9 +43,10 @@ local function createESP(humanoid, character)
 	textLabel.BackgroundTransparency = 1
 	textLabel.TextColor3 = Color3.new(1, 1, 1)
 	textLabel.TextStrokeTransparency = 0.5
-	textLabel.TextScaled = true
 	textLabel.TextWrapped = false
-	textLabel.Font = Enum.Font.SourceSansBold -- Optional: bolder font for better readability
+	textLabel.Font = Enum.Font.SourceSansBold
+	textLabel.TextScaled = false -- Disable automatic scaling
+	textLabel.TextSize = espSize -- Manually increase text size (default is usually around 14)
 
 	billboard.Parent = character
 
@@ -53,6 +55,7 @@ local function createESP(humanoid, character)
 		if humanoid and humanoid.Parent and entityESP == true and character:FindFirstChild("HumanoidRootPart") then
 			local distance = (camera.CFrame.Position - character.HumanoidRootPart.Position).Magnitude
 			textLabel.Text = string.format("%s | %d/%d | %.1f", character.Name, humanoid.Health, humanoid.MaxHealth, distance)
+			textLabel.TextSize = espSize
 		else
 			billboard:Destroy()
 		end
@@ -700,6 +703,19 @@ local function Launch()
 		Callback = function(Value)
 			entityESP = Value
 		end
+	})
+	
+	EspTab:AddSlider({
+		Name = "Entity ESP Size",
+		Min = 10,
+		Max = 30,
+		Default = 22.5,
+		Color = Color3.fromRGB(255,255,255),
+		Increment = .25,
+		ValueName = "Size",
+		Callback = function(Value)
+			espSize = Value
+		end    
 	})
 	
 	EspTab:AddToggle({
