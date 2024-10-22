@@ -68,15 +68,17 @@ end
 
 task.spawn(function()
 	while true do
-		if entityESP then
-			for _, character in pairs(workspace["Live"]:GetChildren()) do
-				if character:FindFirstChild("Humanoid") and character ~= game.Players.LocalPlayer.Character then
-					if not character:FindFirstChild("BillboardGui") then
-						createESP(character.Humanoid, character)
+		pcall(function()
+			if entityESP then
+				for _, character in pairs(workspace["Live"]:GetChildren()) do
+					if character:FindFirstChild("Humanoid") and character ~= game.Players.LocalPlayer.Character then
+						if not character:FindFirstChild("BillboardGui") then
+							createESP(character.Humanoid, character)
+						end
 					end
 				end
 			end
-		end
+		end)
 		wait(1) -- Update every second
 	end
 end)
