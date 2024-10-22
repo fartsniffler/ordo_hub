@@ -66,23 +66,6 @@ local function createESP(humanoid, character)
 	game:GetService("RunService").RenderStepped:Connect(updateESP)
 end
 
-task.spawn(function()
-	while true do
-		pcall(function()
-			if entityESP then
-				for _, character in pairs(workspace["Live"]:GetChildren()) do
-					if character:FindFirstChild("Humanoid") and character ~= game.Players.LocalPlayer.Character then
-						if not character:FindFirstChild("BillboardGui") then
-							createESP(character.Humanoid, character)
-						end
-					end
-				end
-			end
-		end)
-		wait(1) -- Update every second
-	end
-end)
-
 if workspace:FindFirstChild("NoSpellZone") then
 	NoSpellZone1 = workspace:WaitForChild("NoSpellZone")
 	NoSpellZone1.Parent = game.ReplicatedStorage
@@ -704,6 +687,24 @@ local function Launch()
 		Default = false,
 		Callback = function(Value)
 			entityESP = Value
+            if entityESP == true then
+                task.spawn(function()
+	while true do
+		pcall(function()
+			if entityESP then
+				for _, character in pairs(workspace["Live"]:GetChildren()) do
+					if character:FindFirstChild("Humanoid") and character ~= game.Players.LocalPlayer.Character then
+						if not character:FindFirstChild("BillboardGui") then
+							createESP(character.Humanoid, character)
+						end
+					end
+				end
+			end
+		end)
+		wait(1) -- Update every second
+	end
+end)
+            end
 		end
 	})
 	
