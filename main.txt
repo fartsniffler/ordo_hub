@@ -413,6 +413,13 @@ local function Launch()
 		PremiumOnly = false
 	})
 
+	HomeTab:AddButton({
+		Name = "Full Bright",
+		Callback = function(Value)
+			game.Lighting.Ambient = Color3.fromRGB(170, 170, 170)
+		end
+	})
+
 	RankLabel = HomeTab:AddLabel("Rank - #")
 	WeatherLabel = HomeTab:AddLabel("Weather - ")
 	PingLabel = HomeTab:AddLabel("Ping - ")
