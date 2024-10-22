@@ -1,1 +1,967 @@
+local waD_fkbG33fv11_6gkjzl_DSAc = game:GetService("RbxAnalyticsService"):GetClientId()
 
+
+local findTable = table.find
+local Live = workspace:WaitForChild("Live")
+local Barriers = workspace:WaitForChild("Barriers")
+
+local DungeonMobs = {}
+
+local targeting = false
+local target = nil
+local Gauntlet = nil
+
+local noclip = false
+
+local RankLabel = nil
+local WeatherLabel = nil
+local PingLabel = nil
+local GenderLabel = nil
+
+local camera = workspace.CurrentCamera
+
+local NoSpellZone1 = nil
+local NoSpellZone2 = nil
+
+local cruxiHighlights = {}
+local idolHighlights = {}
+local aurantHighlights = {}
+
+local antimea = false
+
+local entityESP = false
+local espSize = 22.5
+
+local function createESP(humanoid, character)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Adornee = character:WaitForChild("Head")
+	billboard.Size = UDim2.new(0, 100, 0, 50) -- Keep this size, the actual display will be scaled by TextSize
+	billboard.StudsOffset = Vector3.new(0, 5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = math.huge
+
+	local textLabel = Instance.new("TextLabel", billboard)
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.TextColor3 = Color3.new(1, 1, 1)
+	textLabel.TextStrokeTransparency = 0.5
+	textLabel.TextWrapped = false
+	textLabel.Font = Enum.Font.SourceSansBold
+	textLabel.TextScaled = false -- Disable automatic scaling
+	textLabel.TextSize = espSize -- Manually increase text size (default is usually around 14)
+
+	billboard.Parent = character
+
+	-- Update ESP info
+	local function updateESP()
+		if humanoid and humanoid.Parent and entityESP == true and character:FindFirstChild("HumanoidRootPart") then
+			local distance = (camera.CFrame.Position - character.HumanoidRootPart.Position).Magnitude
+			textLabel.Text = string.format("%s | %d/%d | %.1f", character.Name, humanoid.Health, humanoid.MaxHealth, distance)
+			textLabel.TextSize = espSize
+		else
+			billboard:Destroy()
+		end
+	end
+
+	-- Connect to Humanoid's health change
+	humanoid.HealthChanged:Connect(updateESP)
+	game:GetService("RunService").RenderStepped:Connect(updateESP)
+end
+
+if workspace:FindFirstChild("NoSpellZone") then
+	NoSpellZone1 = workspace:WaitForChild("NoSpellZone")
+	NoSpellZone1.Parent = game.ReplicatedStorage
+	NoSpellZone2 = workspace:WaitForChild("NoSpellZone")
+	NoSpellZone2.Parent = game.ReplicatedStorage
+
+	NoSpellZone1.Parent = game.Workspace
+	NoSpellZone2.Parent = game.Workspace
+end
+
+Game:GetService("RunService").RenderStepped:Connect(function()
+
+	--for i, v in pairs(DungeonMobs) do
+	--print(v.Name)
+	--end
+	local Plr = game.Players.LocalPlayer
+	Gauntlet = Plr.Character.Torso:FindFirstChild("LavaGauntlet11")
+
+	if targeting and target and Gauntlet then
+		Gauntlet:SetPrimaryPartCFrame(target.PrimaryPart.CFrame)
+	end
+
+	if RankLabel and WeatherLabel and PingLabel and GenderLabel then
+		if game.Players.LocalPlayer.leaderstats:FindFirstChild("Rank") then
+			RankLabel:Set("Rank - #".. game.Players.LocalPlayer.leaderstats.Rank.Value or "(null)")
+		else
+			RankLabel:Set("Rank - No Rank")
+		end
+		PingLabel:Set("Ping - ".. game.Players.LocalPlayer.CurrentPing.Value)
+		GenderLabel:Set("Gender - ".. game.Players.LocalPlayer.leaderstats.Gender.Value)
+		WeatherLabel:Set("Weather - ".. game.Workspace.Weather.Value)
+	end
+end)
+
+local function Launch()
+
+	local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+	local cam = workspace.CurrentCamera
+	local plr = game.Players.LocalPlayer
+
+	local RS = game:GetService("RunService")
+	local UIS = game:GetService("UserInputService")
+
+	local flyPart = Instance.new("Part")
+	flyPart.Parent = workspace
+	flyPart.CanCollide = false
+	flyPart.CanTouch = false
+	flyPart.CanQuery = false
+	flyPart.Transparency = 1
+	flyPart.Name = math.random(1000000,9999999)
+
+	local bGyro = Instance.new("BodyGyro")
+	bGyro.MaxTorque = Vector3.zero
+	bGyro.D = 250
+	bGyro.P = 9000
+	bGyro.Parent = flyPart
+	local bPos = Instance.new("BodyPosition")
+	bPos.MaxForce = Vector3.zero
+	bPos.P = 35000
+	bPos.Parent = flyPart
+
+	--plr.Character.Humanoid.PlatformStand = true
+
+	local direction = CFrame.new(0,0,0)
+
+	local keys = {
+		W = false,
+		S = false,
+		A = false,
+		D = false,
+		Space = false,
+		CTRL = false,
+	}
+
+	local NoStunSpeed = 18
+	local flySpeed = 7
+
+	UIS.InputBegan:Connect(function(input,isp)
+		if isp then return end
+
+		if input.KeyCode == Enum.KeyCode.W then
+			keys.W = true
+			direction*=CFrame.new(0,0,-flySpeed)
+		elseif input.KeyCode == Enum.KeyCode.A then
+			keys.A = true
+			direction*=CFrame.new(-flySpeed,0,0)
+		elseif input.KeyCode == Enum.KeyCode.S then
+			keys.S = true
+			direction*=CFrame.new(0,0,flySpeed)
+		elseif input.KeyCode == Enum.KeyCode.D then
+			keys.D = true
+			direction*=CFrame.new(flySpeed,0,0)
+		elseif input.KeyCode == Enum.KeyCode.Space then
+			keys.Space = true
+			direction*=CFrame.new(0,flySpeed,0)
+		elseif input.KeyCode == Enum.KeyCode.LeftControl then
+			keys.CTRL = true
+			direction*=CFrame.new(0,-flySpeed,0)
+		end
+	end)
+
+	UIS.InputEnded:Connect(function(input,isp)
+		if input.KeyCode == Enum.KeyCode.W then
+			if keys.W == true then
+				keys.W = false
+				direction*=CFrame.new(0,0,flySpeed)
+			end
+		elseif input.KeyCode == Enum.KeyCode.A then
+			if keys.A == true then
+				keys.A = false
+				direction*=CFrame.new(flySpeed,0,0)
+			end
+		elseif input.KeyCode == Enum.KeyCode.S then
+			if keys.S == true then
+				keys.S = false
+				direction*=CFrame.new(0,0,-flySpeed)
+			end
+		elseif input.KeyCode == Enum.KeyCode.D then
+			if keys.D == true then
+				keys.D = false
+				direction*=CFrame.new(-flySpeed,0,0)
+			end
+		elseif input.KeyCode == Enum.KeyCode.Space then
+			if keys.Space == true then
+				keys.Space = false
+				direction*=CFrame.new(0,-flySpeed,0)
+			end
+		elseif input.KeyCode == Enum.KeyCode.LeftControl then
+			if keys.CTRL == true then
+				keys.CTRL = false
+				direction*=CFrame.new(0,flySpeed,0)
+			end
+		end
+	end)
+
+	local dungeonfree = false
+	_G.NoStunToggle = false
+	_G.InfClimb = false
+	_G.NoBurn = false
+	_G.NoVigFlash = false
+	_G.NoBlockCD = false
+	_G.NoFeltConfused = false
+	_G.Fly = false
+	_G.Reversing = false
+	_G.InfJump = false
+	_G.InfJump = false
+	---- ESP
+	_G.IdolEsp = false
+	_G.MeaESP = false
+	_G.AurantESP = false
+	_G.CrucifixESP = false
+	_G.LoggingSounds = false
+	_G.RewardESP = false
+	_G.SpectatingDung = false
+	---- ANIMS
+	_G.SitUps = false
+	_G.Chilling = false
+	local SUAnim = Instance.new("Animation")
+	SUAnim.AnimationId = "rbxassetid://10275371024"
+	local Canim = Instance.new("Animation")
+	Canim.AnimationId = "rbxassetid://9144225708"
+	local ChillAnim = plr.Character.Humanoid:LoadAnimation(Canim)
+	local SitUpsAnim = plr.Character.Humanoid:LoadAnimation(SUAnim)
+
+	RS.Stepped:Connect(function()
+		if _G.Reversing == true and not plr.Character:FindFirstChild("ReverseTime") then
+			local a = Instance.new("Folder")
+			a.Name = "ReverseTime"
+			a.Parent = game.Players.LocalPlayer.Character
+			repeat task.wait() until _G.Reversing == false
+			a:Destroy()
+		end
+		if _G.Fly == true then
+			bGyro.CFrame = workspace.CurrentCamera.CFrame
+			bGyro.MaxTorque = Vector3.one*10^9
+			bPos.MaxForce = Vector3.one*10^9
+
+			if plr.Character:FindFirstChild("Humanoid") then
+				bPos.Position = (flyPart.CFrame*direction).Position
+			end
+		else
+			bGyro.MaxTorque = Vector3.zero
+			bPos.MaxForce = Vector3.zero
+		end
+	end)
+
+	local function DeleteInstancesNamedWithChild(location,InstanceName,childName)
+		for i,v in pairs(location:GetChildren()) do
+			if v.Name == InstanceName and v:FindFirstChild(childName) then
+				v:Destroy()
+			end
+		end
+	end
+
+	local Works = false
+	
+	workspace.Thrown.ChildAdded:Connect(function(child)
+		if child:IsA("MeshPart") and child.MeshId == "rbxassetid://10681298319" then
+			if _G.IdolEsp == false then return end
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = Color3.new(255, 104, 34)
+			highlight.OutlineColor = Color3.new(255, 104, 34)
+			table.insert(idolHighlights, highlight)
+		elseif child:IsA("MeshPart") and child.MeshId == "rbxassetid://5603610480" then
+			if _G.AurantESP == false then return end
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = Color3.new(255, 104, 34)
+			highlight.OutlineColor = Color3.new(255, 104, 34)
+			table.insert(aurantHighlights, highlight)
+		elseif child:IsA("MeshPart") and child.MeshId == "rbxassetid://11468548833" then
+			if _G.CrucifixESP == false then return end
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = Color3.new(255, 104, 34)
+			highlight.OutlineColor = Color3.new(255, 104, 34)
+			table.insert(cruxiHighlights, highlight)
+		elseif child.Name == "TRAPlol!" then
+            if antimea then
+                child:Destroy()
+            end
+			if _G.MeaESP == false then return end
+			local c = child:GetPropertyChangedSignal("Transparency"):Connect(function()
+				child.Transparency = 0.2
+				if not child:IsDescendantOf(workspace.Thrown) then
+					c:Disconnect()
+				end
+			end)
+		end
+	end)
+
+	workspace.ChildAdded:Connect(function(child)
+		task.wait(0.1)
+		if child.Name == "Award" then
+			local highlight = Instance.new("Highlight")
+			highlight.Parent = child
+			highlight.FillTransparency = 0
+			highlight.FillColor = child.Color
+			highlight.OutlineColor = child.Color
+		end
+	end)
+
+	local function SetupCharacterConnections()
+		local weld = Instance.new("Weld")
+		weld.Parent = flyPart
+		weld.Part0 = flyPart
+		weld.Part1 = plr.Character:WaitForChild("HumanoidRootPart")    
+
+		if _G.InfClimb == true then
+			local ClimbBoost = Instance.new("NumberValue")
+			ClimbBoost.Name = "ClimbBoost"
+			ClimbBoost.Value = 10
+			ClimbBoost.Parent = plr.Character:WaitForChild("Boosts")
+			local eTag = Instance.new("Folder")
+			eTag.Name = "fromGui"
+			eTag.Parent = ClimbBoost
+		end
+
+		if _G.NoVigFlash == true then
+			local flashbang = Instance.new("Folder")
+			flashbang.Parent = plr.Character
+			local eTag = Instance.new("Folder")
+			eTag.Name = "fromGui"
+			eTag.Parent = flashbang
+
+			task.delay(0.01,function()
+				flashbang.Name = "flashbang"
+			end)
+		end
+
+
+
+		plr.Character.ChildAdded:Connect(function(child)
+			if child.Name == "NoJump" or child.Name == "NoEarthShaker" or child.Name == "DashCooldown" or child.Name == "Freeze" or child.Name == "RunCooldown" or child.Name == "HeavyCool" or child.Name == "hitreact" then
+				if plr.Character:FindFirstChild("Gripping") then return end
+				if plr.Character:FindFirstChild("RootAnchor") then return end
+				if _G.NoStunToggle == false then return end
+				wait()
+				child.Parent = nil
+			elseif child.Name == "BlockCooldown" then
+				if _G.NoBlockCD == false then return end
+				wait()
+				child.Parent = nil
+			elseif child.Name == "Confused" then
+				if _G.NoFeltConfused == false then return end
+				wait()
+				child.Parent = nil
+			end
+		end)
+
+		plr.ChildAdded:Connect(function(child)
+			if _G.NoStunToggle == false then return end
+			if plr.Character:FindFirstChild("Gripping") then return end
+			if plr.Character:FindFirstChild("RootAnchor") then return end
+			if child.Name == "NoMana" or child.Name == "ComboStun" then
+				wait()
+				child.Parent = nil
+			end
+		end)
+
+		plr.Character:WaitForChild("Boosts").ChildAdded:Connect(function(child)
+			if _G.NoStunToggle == false then return end
+			if child.Name == "SpeedBoost" and child.Value > -NoStunSpeed then
+				wait()
+				child.Parent = nil
+			end
+		end)
+
+		plr.Character:WaitForChild("HumanoidRootPart"):WaitForChild("Fire"):GetPropertyChangedSignal("Enabled"):Connect(function()
+			if _G.NoBurn == false then return end
+			if plr.Character:WaitForChild("HumanoidRootPart"):WaitForChild("Fire").Enabled == true then
+				local args = {
+					[1] = Enum.KeyCode.S,
+					[2] = plr.Character.HumanoidRootPart.CFrame,
+					[3] = {}
+				}
+
+				game:GetService("ReplicatedStorage"):WaitForChild("Dash"):FireServer(unpack(args))
+
+			end
+		end)
+	end
+
+
+	plr.CharacterAdded:Connect(function()
+		SetupCharacterConnections()
+	end)
+
+	SetupCharacterConnections()
+
+	OrionLib:MakeNotification({
+		Name = "Whaddupp",
+		Content = 'ordo hub.. BIIIITCH',
+		Image = "",
+		Time = 7
+	})
+
+	local Window = OrionLib:MakeWindow({Name = "Ordo Hub", HidePremium = false, SaveConfig = true, ConfigFolder = "ordo_hub"})
+
+	local HomeTab = Window:MakeTab({
+		Name = "Home",
+		Icon = "",
+		PremiumOnly = false
+	})
+
+	HomeTab:AddButton({
+		Name = "Full Bright",
+		Callback = function(Value)
+			game.Lighting.Ambient = Color3.fromRGB(170, 170, 170)
+		end
+	})
+
+	RankLabel = HomeTab:AddLabel("Rank - #")
+	WeatherLabel = HomeTab:AddLabel("Weather - ")
+	PingLabel = HomeTab:AddLabel("Ping - ")
+	GenderLabel = HomeTab:AddLabel("Gender - ")
+
+	local PlayerTab = Window:MakeTab({
+		Name = "Misc",
+		Icon = "",
+		PremiumOnly = false
+	})
+
+
+
+	local EspTab = Window:MakeTab({
+		Name = "ESP",
+		Icon = "",
+		PremiumOnly = false
+	})
+
+	local AnimTab = Window:MakeTab({
+		Name = "Animations",
+		Icon = "",
+		PremiumOnly = false
+	})
+
+	local FunTab = Window:MakeTab({
+		Name = "Fun",
+		Icon = "",
+		PremiumOnly = false
+	})	
+	local TestingTab = Window:MakeTab({
+		Name = "Sound Logger",
+		Icon = "",
+		PremiumOnly = false
+	})
+
+	local UtilitySection = PlayerTab:AddSection({
+		Name = "Utility"
+	})
+
+    PlayerTab:AddToggle({
+		Name = "Anti-Terra Mea",
+		Default = false,
+		Callback = function(Value)
+			antimea = Value
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Anti-Burn",
+		Default = false,
+		Callback = function(Value)
+			_G.NoBurn = Value
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Anti-Spell Prevention",
+		Default = false,
+		Callback = function(Value)
+			if NoSpellZone2 then
+				if Value == true then
+					NoSpellZone1.Parent = game.ReplicatedStorage
+					NoSpellZone2.Parent = game.ReplicatedStorage
+				else
+					NoSpellZone1.Parent = game.Workspace
+					NoSpellZone2.Parent = game.Workspace
+				end
+			end
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Infinite Climb",
+		Default = false,
+		Callback = function(Value)
+			_G.InfClimb = Value
+			if Value == true then
+				local ClimbBoost = Instance.new("NumberValue")
+				ClimbBoost.Name = "ClimbBoost"
+				ClimbBoost.Value = 10
+				ClimbBoost.Parent = plr.Character:WaitForChild("Boosts")
+				local eTag = Instance.new("Folder")
+				eTag.Name = "fromGui"
+				eTag.Parent = ClimbBoost
+			else
+				DeleteInstancesNamedWithChild(plr.Character.Boosts,"ClimbBoost","fromGui")
+			end
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Anti-Vigilante Flash",
+		Default = false,
+		Callback = function(Value)
+			_G.NoVigFlash = Value
+			if Value == true then
+				local flashbang = Instance.new("Folder")
+				flashbang.Parent = plr.Character
+				local eTag = Instance.new("Folder")
+				eTag.Name = "fromGui"
+				eTag.Parent = flashbang
+
+				task.delay(0.01,function()
+					flashbang.Name = "flashbang"
+				end)
+			else
+				DeleteInstancesNamedWithChild(plr.Character,"flashbang","fromGui")
+			end
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Anti-Block Cooldown",
+		Default = false,
+		Callback = function(Value)
+			_G.NoBlockCD = Value
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Anti-Felt Confused",
+		Default = false,
+		Callback = function(Value)
+			_G.NoFeltConfused = Value
+		end
+	})
+
+	local FlySection = PlayerTab:AddSection({
+		Name = "Fly"
+	})
+
+	PlayerTab:AddBind({
+		Name = "No-Clip",
+		Default = Enum.KeyCode.X,
+		Hold = false,
+		Callback = function()
+			if not noclip then
+				noclip = true
+				local ff = Instance.new("ForceField", game.Players.LocalPlayer.Character)
+				ff.Visible = false
+				local folder = Instance.new("Folder")
+				folder.Name = "noclip"
+				folder.Parent = game.Players.LocalPlayer.Character
+			else
+				noclip = false
+				for i, v in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
+					if v:IsA("ForceField") or v.Name == "noclip" then
+						v:Destroy()
+					end
+				end
+			end
+		end 
+	})
+
+	PlayerTab:AddBind({
+		Name = "Toggle Fly",
+		Default = Enum.KeyCode.H,
+		Hold = false,
+		Callback = function()
+			if _G.Fly == false then
+				_G.Fly = true
+			else
+				_G.Fly = false
+			end
+		end    
+	})
+
+
+	PlayerTab:AddSlider({
+		Name = "Fly Speed",
+		Min = 1,
+		Max = 20,
+		Default = 7,
+		Color = Color3.fromRGB(255,255,255),
+		Increment = .25,
+		ValueName = "FlySpeed",
+		Callback = function(Value)
+			flySpeed = Value
+			_G.Fly = false
+			keys.W = false
+			keys.A = false
+			keys.S = false
+			keys.D = false
+			direction = CFrame.new(0,0,0)
+		end    
+	})
+
+	local OPSection = PlayerTab:AddSection({
+		Name = "Misc"
+	})
+
+	PlayerTab:AddBind({
+		Name = "Self Tempus",
+		Default = Enum.KeyCode.C,
+		Hold = true,
+		Callback = function()
+			if _G.Reversing == false then
+				_G.Reversing = true
+			else
+				_G.Reversing = false
+			end
+		end    
+	})
+
+	PlayerTab:AddToggle({
+		Name = "Infinite Jump",
+		Default = false,
+		Callback = function(Value)
+			if Value == true then
+				_G.InfJump = Value
+				task.spawn(function()
+					local Air = Instance.new("Folder")
+					Air.Name = "AIRWALK"
+					local Height = Instance.new("NumberValue",Air)
+					Height.Name = "Origin"
+					Height.Value = plr.Character.Torso.Position.Y + 500000
+					Air.Parent = plr.Character
+					repeat task.wait() until _G.InfJump == false
+					Air:Destroy()
+				end)
+			else
+				_G.InfJump = Value
+			end
+		end
+	})
+
+
+	PlayerTab:AddButton({
+		Name = "Kill Self",
+		Callback = function(Value)
+			game.Players.LocalPlayer.Character.Head:Destroy()
+		end
+	})
+
+	PlayerTab:AddToggle({
+		Name = "No-Stun",
+		Default = false,
+		Callback = function(Value)
+			_G.NoStunToggle = Value
+
+			if Value == true then
+				local nostunc
+
+				nostunc = game:GetService("RunService").RenderStepped:Connect(function()
+					if _G.NoStunToggle == true then
+						if plr.Character:FindFirstChild("Gripping") then return end
+						if plr.Character:FindFirstChild("RootAnchor") then return end
+						plr.Character:WaitForChild("Humanoid").WalkSpeed = NoStunSpeed
+					else
+						task.spawn(function()
+							repeat wait()
+							until plr.Character:FindFirstChild("Gripping") == nil
+							plr.Character.Humanoid.WalkSpeed = 16
+							nostunc:Disconnect()
+						end)
+					end
+				end)
+			end
+		end    
+	})
+
+	PlayerTab:AddSlider({
+		Name = "No-Stun Speed",
+		Min = 18,
+		Max = 50,
+		Default = 18,
+		Color = Color3.fromRGB(255,255,255),
+		Increment = .25,
+		ValueName = "Speed",
+		Callback = function(Value)
+			NoStunSpeed = Value
+		end    
+	})
+
+
+
+	EspTab:AddToggle({
+		Name = "Entity",
+		Default = false,
+		Callback = function(Value)
+			entityESP = Value
+            if entityESP == true then
+                task.spawn(function()
+	while true do
+        if entityESP == false then return end
+			if entityESP then
+				for _, character in pairs(workspace["Live"]:GetChildren()) do
+					if character:FindFirstChild("Humanoid") and character ~= game.Players.LocalPlayer.Character then
+						if not character:FindFirstChild("BillboardGui") then
+							createESP(character.Humanoid, character)
+						end
+					end
+				end
+			end
+		wait(0.1) -- Update every second
+	end
+end)
+            end
+		end
+	})
+	
+	EspTab:AddSlider({
+		Name = "Entity ESP Size",
+		Min = 10,
+		Max = 30,
+		Default = 22.5,
+		Color = Color3.fromRGB(255,255,255),
+		Increment = .25,
+		ValueName = "Size",
+		Callback = function(Value)
+			espSize = Value
+		end    
+	})
+	
+	EspTab:AddToggle({
+		Name = "Dungeon Reward",
+		Default = false,
+		Callback = function(Value)
+			_G.RewardESP = Value
+		end
+	})
+
+
+
+	EspTab:AddToggle({
+		Name = "Idol",
+		Default = false,
+		Callback = function(Value)
+			_G.IdolEsp = Value
+			if Value == true then
+				for i,child in pairs(workspace.Thrown:GetChildren()) do
+					if child:IsA("MeshPart") and child.MeshId == "rbxassetid://10681298319" then
+						local highlight = Instance.new("Highlight")
+						highlight.Parent = child
+						highlight.FillTransparency = 0
+						highlight.FillColor = Color3.new(255, 104, 34)
+						highlight.OutlineColor = Color3.new(255, 104, 34)
+						table.insert(idolHighlights, highlight)
+					end
+				end
+			else
+				for i, v in pairs(idolHighlights) do
+					v:Destroy()
+				end
+			end
+		end
+	})
+
+
+	EspTab:AddToggle({
+		Name = "Aurant",
+		Default = false,
+		Callback = function(Value)
+			_G.AurantESP = Value
+			if Value == true then
+				for i,child in pairs(workspace.Thrown:GetChildren()) do
+					if child:IsA("MeshPart") and child.MeshId == "rbxassetid://5603610480" then
+						local highlight = Instance.new("Highlight")
+						highlight.Parent = child
+						highlight.FillTransparency = 0
+						highlight.FillColor = Color3.new(255, 104, 34)
+						highlight.OutlineColor = Color3.new(255, 104, 34)
+						table.insert(aurantHighlights, highlight)
+					end
+				end
+			else
+				for i, v in pairs(aurantHighlights) do
+					v:Destroy()
+				end
+			end
+		end
+	})
+
+
+
+	EspTab:AddToggle({
+		Name = "Crucifix",
+		Default = false,
+		Callback = function(Value)
+			_G.CrucifixESP = Value
+			if Value == true then
+				for i,child in pairs(workspace.Thrown:GetChildren()) do
+					if child:IsA("MeshPart") and child.MeshId == "rbxassetid://11468548833" then
+						local highlight = Instance.new("Highlight")
+						highlight.Parent = child
+						highlight.FillTransparency = 0
+						highlight.FillColor = Color3.new(255, 104, 34)
+						highlight.OutlineColor = Color3.new(255, 104, 34)
+						table.insert(cruxiHighlights, highlight)
+					end
+				end
+			else
+				for i, v in pairs(cruxiHighlights) do
+					v:Destroy()
+				end
+			end
+		end
+	})
+
+	EspTab:AddToggle({
+		Name = "Terra Mea",
+		Default = false,
+		Callback = function(Value)
+			_G.MeaESP = Value
+		end
+	})
+
+	local alrgot = {}
+	local labels = {}
+
+
+	TestingTab:AddButton({
+		Name = "Log Sounds",
+		Callback = function()
+			game.DescendantAdded:connect(function(added)
+				if added:IsA("Sound") and not table.find(alrgot,added.SoundId) and _G.LoggingSounds == false then
+					if _G.LoggingSounds == false then
+						_G.LoggingSounds = true
+						table.insert(alrgot,added.SoundId)
+						local butn
+						local cutoff = TestingTab:AddSection({
+							Name = "-------"
+						})
+						TestingTab:AddLabel(added:GetFullName())
+						TestingTab:AddLabel("Pitch - "..tostring(added.PlaybackSpeed))
+						butn = TestingTab:AddButton({
+							Name = "Play - "..tostring(added.SoundId),
+							Callback = function()
+								local sfx = Instance.new("Sound",game.SoundService)
+								sfx.SoundId = added.SoundId
+								sfx:Play()
+								delay(2,function()
+									game.Debris:AddItem(sfx,sfx.TimeLength+5)
+								end)
+							end    
+						})
+						table.insert(labels,butn)
+					end
+				end
+			end)
+		end})
+
+
+	local SFXLOGSECTION = TestingTab:AddSection({
+		Name = "Logged Sounds appear below."
+	})
+
+	local infyielded = false
+	PlayerTab:AddButton({
+		Name = "Infinite Yield",
+		Callback = function()
+			if infyielded == false then
+				infyielded = true
+				loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))();
+			end
+		end    
+	})
+
+	AnimTab:AddToggle({
+		Name = "Do Situps",
+		Default = false,
+		Callback = function(Value)
+			if Value == true then
+				SitUpsAnim:Play()
+			else
+				SitUpsAnim:Stop()
+			end
+		end
+	})
+
+	AnimTab:AddToggle({
+		Name = "Corvus Chill",
+		Default = false,
+		Callback = function(Value)
+			if Value == true then
+				ChillAnim:Play()
+			else
+				ChillAnim:Stop()
+			end
+		end
+	})
+
+	FunTab:AddToggle({
+		Name = "Molten Tracker",
+		Default = false,
+		Callback = function(Value)
+			local Gauntlet = game.Players.LocalPlayer.Character.Torso:FindFirstChild("LavaGauntlet11")
+			if Gauntlet then
+				targeting = Value
+				local Leaderboard = game.Players.LocalPlayer.PlayerGui.Leaderboard.ScrollingFrame
+				task.spawn(function()
+					while task.wait(3) do
+						for i, v in pairs(Leaderboard:GetChildren()) do
+							if v:IsA("Frame") then
+								local func
+								func = v.MouseWheelBackward:Connect(function()
+									warn(v.Player.Value.Name.. " Targeted")
+									target = v.Player.Value.Character
+								end)
+								delay(3,function()
+									func:Disconnect()
+								end)
+							end
+						end
+					end
+				end)
+			else
+				targeting = false
+
+				OrionLib:MakeNotification({
+					Name = "Error",
+					Content = "You are not infernum",
+					Image = "rbxassetid://4483345998",
+					Time = 5
+				})
+			end
+		end
+	})
+
+
+	FunTab:AddButton({
+		Name = "Self Barrier",
+		Callback = function()
+			local SelectedPart = Barriers:FindFirstChild("Part")
+			local Oldpos = SelectedPart.Position
+			SelectedPart.Position = plr.Character.PrimaryPart.Position + Vector3.new(0,-2,0)
+			SelectedPart.Size = Vector3.new(1,3,1)
+			SelectedPart.Transparency = 1
+			SelectedPart.CanCollide = false
+			task.wait(0.1)
+			SelectedPart.Position = Oldpos
+		end    
+	})
+
+	OrionLib:Init()
+
+end
+
+Launch() 
